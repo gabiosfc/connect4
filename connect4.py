@@ -3,6 +3,8 @@ import pygame
 import sys
 import math
 import random
+import time
+import threading
 
 # Configurações básicas
 ROW_COUNT = 7
@@ -25,6 +27,10 @@ PLAYER_PIECE = 1
 AI_PIECE = 2
 WINDOW_LENGTH = 4
 EMPTY = 0
+
+minimax_total_time = 0  # Tempo total para o algoritmo Minimax
+alpha_beta_total_time = 0  # Tempo total para o algoritmo AlphaBeta
+
 
 # Inicialização do Pygame
 pygame.init()
@@ -128,6 +134,9 @@ def get_valid_locations(board):
     return valid_locations
 
 def minimax(board, depth, maximizingPlayer):
+    global minimax_total_time  # Usar a variável global de tempo do Minimax
+    start_time = time.time()  # Marcar o início do tempo
+    
     valid_locations = get_valid_locations(board)
     is_terminal = winning_move(board, PLAYER_PIECE) or winning_move(board, AI_PIECE) or len(valid_locations) == 0
     if depth == 0 or is_terminal:
@@ -152,6 +161,8 @@ def minimax(board, depth, maximizingPlayer):
             if new_score > value:
                 value = new_score
                 column = col
+        end_time = time.time()  # Marcar o fim do tempo
+        minimax_total_time += (end_time - start_time)  # Acumular o tempo de execução
         return column, value
     else:
         value = math.inf
@@ -164,9 +175,15 @@ def minimax(board, depth, maximizingPlayer):
             if new_score < value:
                 value = new_score
                 column = col
+        end_time = time.time()  # Marcar o fim do tempo
+        minimax_total_time += (end_time - start_time)  # Acumular o tempo de execução
         return column, value
 
+
 def minimax_alpha_beta(board, depth, alpha, beta, maximizingPlayer):
+    global alpha_beta_total_time  # Usar a variável global de tempo do AlphaBeta
+    start_time = time.time()  # Marcar o início do tempo
+    
     valid_locations = get_valid_locations(board)
     is_terminal = winning_move(board, PLAYER_PIECE) or winning_move(board, AI_PIECE) or len(valid_locations) == 0
     if depth == 0 or is_terminal:
@@ -194,6 +211,8 @@ def minimax_alpha_beta(board, depth, alpha, beta, maximizingPlayer):
             alpha = max(alpha, value)
             if alpha >= beta:
                 break
+        end_time = time.time()  # Marcar o fim do tempo
+        alpha_beta_total_time += (end_time - start_time)  # Acumular o tempo de execução
         return column, value
     else:
         value = math.inf
@@ -209,34 +228,21 @@ def minimax_alpha_beta(board, depth, alpha, beta, maximizingPlayer):
             beta = min(beta, value)
             if alpha >= beta:
                 break
+        end_time = time.time()  # Marcar o fim do tempo
+        alpha_beta_total_time += (end_time - start_time)  # Acumular o tempo de execução
         return column, value
 
-def select_algorithm_and_depth():
+
+def select_depth():
     screen.fill(WHITE)
     font = pygame.font.SysFont("monospace", 25)
     
-    # Definindo áreas dos botões
-    depth_rects = [pygame.Rect(100 + (i - 1) * 60, 400, 50, 50) for i in range(1, 7)]
-    minimax_rect = pygame.Rect(100, 150, 250, 60)
-    alpha_beta_rect = pygame.Rect(100, 230, 250, 60)
+    depth_rects = [pygame.Rect(100 + (i - 1) * 60, 400, 50, 50) for i in range(1, 7)]    
     
-    
-    # Definindo as cores dos botões
     for rect in depth_rects:
         pygame.draw.rect(screen, GRAY, rect)
-    pygame.draw.rect(screen, GRAY, minimax_rect)
-    pygame.draw.rect(screen, GRAY, alpha_beta_rect)
     
-    
-    # Texto nos botões
     text_depth = font.render("Profundidade", 1, BLACK)
-    text_minimax = font.render("Minimax", 1, BLACK)
-    text_alpha_beta = font.render("AlphaBeta", 1, BLACK)
-    
-    
-    # Centralizando o texto nos botões
-    screen.blit(text_minimax, (minimax_rect.x + (minimax_rect.width - text_minimax.get_width()) // 2, minimax_rect.y + (minimax_rect.height - text_minimax.get_height()) // 2))
-    screen.blit(text_alpha_beta, (alpha_beta_rect.x + (alpha_beta_rect.width - text_alpha_beta.get_width()) // 2, alpha_beta_rect.y + (alpha_beta_rect.height - text_alpha_beta.get_height()) // 2))
     screen.blit(text_depth, (100, 330))
 
     # Números de profundidade
@@ -246,44 +252,57 @@ def select_algorithm_and_depth():
 
     pygame.display.update()
 
-    selected_algorithm = None
     selected_depth = None 
 
-    while selected_algorithm is None or selected_depth is None:
+    while selected_depth is None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            
+            # Verificando profundidade ao clicar
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if minimax_rect.collidepoint(event.pos):
-                    selected_algorithm = "minimax"
-                elif alpha_beta_rect.collidepoint(event.pos):
-                    selected_algorithm = "alpha_beta"
-                
-                # Verificando profundidade
                 for i in range(1, 7):
                     if depth_rects[i - 1].collidepoint(event.pos):
                         selected_depth = i
+                        print(f"Profundidade selecionada: {selected_depth}")
+                        break  # Sai do loop após selecionar uma profundidade
 
     # Exibir seleção do usuário
     screen.fill(WHITE)
-    selected_text = font.render(f"Algoritmo: {selected_algorithm.capitalize()}", 1, BLACK)
     selected_depth_text = font.render(f"Profundidade: {selected_depth}", 1, BLACK)
-    screen.blit(selected_text, (width // 2 - selected_text.get_width() // 2, height // 2 - 60))
     screen.blit(selected_depth_text, (width // 2 - selected_depth_text.get_width() // 2, height // 2))
     pygame.display.update()
 
     pygame.time.wait(2000)
 
-    return selected_algorithm, selected_depth
+    return selected_depth
+
+# Função para o algoritmo Minimax
+def run_minimax(board, depth, turn):
+    global minimax_total_time
+    start_time = time.time()
+    col, minimax_score = minimax(board, depth, True)
+    end_time = time.time()
+    minimax_total_time += (end_time - start_time)
+    return col
+
+# Função para o algoritmo Alpha-Beta
+def run_alpha_beta(board, depth, turn):
+    global alpha_beta_total_time
+    start_time = time.time()
+    col, alpha_beta_score = minimax_alpha_beta(board, depth, -math.inf, math.inf, True)
+    end_time = time.time()
+    alpha_beta_total_time += (end_time - start_time)
+    return col
 
 def main():
     board = create_board()
     game_over = False
     turn = random.randint(PLAYER, AI)
 
-    # Seleção de algoritmo e profundidade
-    selected_algorithm, selected_depth = select_algorithm_and_depth()
+    # Chama a função de seleção de profundidade
+    depth = select_depth()
 
     # Loop do jogo
     draw_board(board)
@@ -315,10 +334,22 @@ def main():
                         draw_board(board)
 
         if turn == AI and not game_over:
-            if selected_algorithm == "minimax":
-                col, minimax_score = minimax(board, selected_depth, True)
-            elif selected_algorithm == "alpha_beta":
-                col, minimax_score = minimax_alpha_beta(board, selected_depth, -math.inf, math.inf, True)
+            # Criando threads para rodar ambos os algoritmos ao mesmo tempo
+            minimax_thread = threading.Thread(target=run_minimax, args=(board, depth, turn))
+            alpha_beta_thread = threading.Thread(target=run_alpha_beta, args=(board, depth, turn))
+
+            # Iniciar ambos os threads
+            minimax_thread.start()
+            alpha_beta_thread.start()
+
+            # Esperar ambos os threads terminarem
+            minimax_thread.join()
+            alpha_beta_thread.join()
+
+            # Exemplo de como você pode decidir qual coluna escolher após as threads terminarem
+            # Você pode decidir logicamente como alternar entre os resultados
+            col = random.choice([run_minimax(board, depth, turn), run_alpha_beta(board, depth, turn)])
+
             if is_valid_location(board, col):
                 row = get_next_open_row(board, col)
                 drop_piece(board, row, col, AI_PIECE)
@@ -331,6 +362,10 @@ def main():
                 turn = turn % 2
         if game_over:
             pygame.time.wait(3000)
+
+    # Exibir o tempo total de execução de cada algoritmo ao final
+    print(f"Tempo total de execução do Minimax: {minimax_total_time:.4f} segundos")
+    print(f"Tempo total de execução do AlphaBeta: {alpha_beta_total_time:.4f} segundos")
 
 def draw_board(board):
     for c in range(COLUMN_COUNT):
