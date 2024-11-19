@@ -346,9 +346,14 @@ def main():
             minimax_thread.join()
             alpha_beta_thread.join()
 
-            # Exemplo de como você pode decidir qual coluna escolher após as threads terminarem
-            # Você pode decidir logicamente como alternar entre os resultados
-            col = random.choice([run_minimax(board, depth, turn), run_alpha_beta(board, depth, turn)])
+
+            algorithm_choice = random.choice(["Minimax", "Alpha-Beta"])  
+            print(f"Algoritmo escolhido: {algorithm_choice}")  # Exibe o algoritmo escolhido no console
+            
+            if algorithm_choice == "Minimax":
+                col = run_minimax(board, depth, turn)
+            else:
+                col = run_alpha_beta(board, depth, turn)
 
             if is_valid_location(board, col):
                 row = get_next_open_row(board, col)
